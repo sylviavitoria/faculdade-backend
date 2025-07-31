@@ -7,5 +7,5 @@ import com.sylviavitoria.apifaculdade.model.Aluno;
 
 @Repository
 public interface AlunoRepository extends JpaRepository<Aluno, Long>  {
-    
+    boolean existsByMatricula(String matricula);
 }
