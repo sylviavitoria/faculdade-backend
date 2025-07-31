@@ -73,7 +73,6 @@ A **autenticação será feita via JWT**.
 - `email`
 - `senha`
 - `tipo` (`ADMIN`, `ALUNO`, `PROFESSOR`)
-- `referenciaId` (vínculo com aluno ou professor)
 
 ---
 
