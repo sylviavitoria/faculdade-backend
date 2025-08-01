@@ -1,7 +1,6 @@
 package com.sylviavitoria.apifaculdade.service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +17,10 @@ import com.sylviavitoria.apifaculdade.repository.AlunoRepository;
 import com.sylviavitoria.apifaculdade.repository.UsuarioRepository;
 import com.sylviavitoria.apifaculdade.exception.BusinessException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -118,11 +121,18 @@ public class AlunoServiceImpl implements AlunoService {
     }
 
     @Override
-    public List<AlunoResponseDTO> listarAlunos() {
-        log.info("Listando todos os alunos");
-        return alunoRepository.findAll().stream()
-                .map(alunoMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<AlunoResponseDTO> listarAlunos(int page, int size, List<String> sort) {
+        log.info("Listando alunos com paginação - página: {}, tamanho: {}, ordenação: {}", page, size, sort);
+        
+        Pageable pageable;
+        if (sort != null && !sort.isEmpty()) {
+            pageable = PageRequest.of(page, size, Sort.by(sort.toArray(new String[0])));
+        } else {
+            pageable = PageRequest.of(page, size, Sort.by("nome"));
+        }
+
+        return alunoRepository.findAll(pageable)
+                .map(alunoMapper::toDTO);
     }
 
     @Override

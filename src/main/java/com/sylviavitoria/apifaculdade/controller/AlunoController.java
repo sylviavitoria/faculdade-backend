@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,7 +46,7 @@ public class AlunoController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR', 'ROLE_ALUNO')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR')")
     public ResponseEntity<AlunoResponseDTO> buscarAluno(@PathVariable Long id) {
         AlunoResponseDTO aluno = alunoService.buscarAlunoPorId(id);
         return ResponseEntity.ok(aluno);
@@ -53,8 +54,11 @@ public class AlunoController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR')")
-    public ResponseEntity<List<AlunoResponseDTO>> listarAlunos() {
-        List<AlunoResponseDTO> alunos = alunoService.listarAlunos();
+    public ResponseEntity<Page<AlunoResponseDTO>> listarAlunos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) List<String> sort) {
+        Page<AlunoResponseDTO> alunos = alunoService.listarAlunos(page, size, sort);
         return ResponseEntity.ok(alunos);
     }
 
