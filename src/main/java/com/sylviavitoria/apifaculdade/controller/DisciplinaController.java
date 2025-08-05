@@ -19,6 +19,13 @@ import com.sylviavitoria.apifaculdade.dto.DisciplinaRequestDTO;
 import com.sylviavitoria.apifaculdade.dto.DisciplinaResponseDTO;
 import com.sylviavitoria.apifaculdade.interfaces.DisciplinaService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +33,19 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("api/v1/disciplinas")
 @RequiredArgsConstructor
+@Tag(name = "Disciplina", description = "Endpoints para gerenciamento de disciplinas")
 public class DisciplinaController {
 
     private final DisciplinaService disciplinaService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Criar disciplina", description = "Cria uma nova disciplina")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Disciplina criada com sucesso"),
+        @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+        @ApiResponse(responseCode = "403", description = "Acesso negado")
+    })
     public ResponseEntity<DisciplinaResponseDTO> criarDisciplina(
             @Valid @RequestBody DisciplinaRequestDTO disciplinaRequestDTO) {
         DisciplinaResponseDTO disciplinaCriada = disciplinaService.criarDisciplina(disciplinaRequestDTO);
@@ -40,6 +54,12 @@ public class DisciplinaController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Atualizar disciplina", description = "Atualiza os dados de uma disciplina existente (Apenas ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Disciplina atualizada com sucesso",
+                content = @Content(schema = @Schema(implementation = DisciplinaResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Disciplina não encontrada", content = @Content)
+    })
     public ResponseEntity<DisciplinaResponseDTO> atualizarDisciplina(
             @PathVariable Long id,
             @Valid @RequestBody DisciplinaRequestDTO disciplinaRequestDTO) {
@@ -49,6 +69,11 @@ public class DisciplinaController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Deletar disciplina", description = "Remove uma disciplina por ID (Apenas ADMIN)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Disciplina deletada com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Disciplina não encontrada", content = @Content)
+    })
     public ResponseEntity<Void> deletarDisciplina(@PathVariable Long id) {
         disciplinaService.deletarDisciplina(id);
         return ResponseEntity.noContent().build();
@@ -56,6 +81,12 @@ public class DisciplinaController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR', 'ROLE_ALUNO')")
+    @Operation(summary = "Buscar disciplina por ID", description = "Retorna os dados de uma disciplina")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Disciplina encontrada",
+                content = @Content(schema = @Schema(implementation = DisciplinaResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Disciplina não encontrada", content = @Content)
+    })
     public ResponseEntity<DisciplinaResponseDTO> buscarDisciplina(@PathVariable Long id) {
         DisciplinaResponseDTO disciplina = disciplinaService.buscarDisciplinaPorId(id);
         return ResponseEntity.ok(disciplina);
@@ -63,6 +94,10 @@ public class DisciplinaController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR', 'ROLE_ALUNO')")
+    @Operation(summary = "Listar disciplinas", description = "Retorna uma lista paginada de disciplinas")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
+    })
     public ResponseEntity<Page<DisciplinaResponseDTO>> listarDisciplinas(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
