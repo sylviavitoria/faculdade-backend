@@ -13,6 +13,7 @@ import com.sylviavitoria.apifaculdade.dto.MatriculaRequestDTO;
 import com.sylviavitoria.apifaculdade.dto.MatriculaResponseDTO;
 import com.sylviavitoria.apifaculdade.dto.NotaRequestDTO;
 import com.sylviavitoria.apifaculdade.exception.BusinessException;
+import com.sylviavitoria.apifaculdade.exception.EntityNotFoundException;
 import com.sylviavitoria.apifaculdade.interfaces.MatriculaService;
 import com.sylviavitoria.apifaculdade.mapper.MatriculaMapper;
 import com.sylviavitoria.apifaculdade.model.Aluno;
@@ -47,10 +48,10 @@ public class MatriculaServiceImpl implements MatriculaService {
         }
 
         Aluno aluno = alunoRepository.findById(matriculaRequestDTO.getAlunoId())
-                .orElseThrow(() -> new BusinessException("Aluno não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
 
         Disciplina disciplina = disciplinaRepository.findById(matriculaRequestDTO.getDisciplinaId())
-                .orElseThrow(() -> new BusinessException("Disciplina não encontrada"));
+                .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
 
         Matricula matricula = new Matricula();
         matricula.setAluno(aluno);
@@ -66,7 +67,7 @@ public class MatriculaServiceImpl implements MatriculaService {
         log.info("Atualizando notas da matrícula {}", id);
 
         Matricula matricula = matriculaRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Matrícula não encontrada"));
+                .orElseThrow(() -> new EntityNotFoundException("Matrícula não encontrada"));
 
         if (notaRequestDTO.getNota1() != null) {
             matricula.setNota1(notaRequestDTO.getNota1());
@@ -84,7 +85,7 @@ public class MatriculaServiceImpl implements MatriculaService {
     @Transactional
     public void deletarMatricula(Long id) {
         if (!matriculaRepository.existsById(id)) {
-            throw new BusinessException("Matrícula não encontrada");
+            throw new EntityNotFoundException("Matrícula não encontrada");
         }
         matriculaRepository.deleteById(id);
     }
@@ -92,7 +93,7 @@ public class MatriculaServiceImpl implements MatriculaService {
     @Override
     public MatriculaResponseDTO buscarMatriculaPorId(Long id) {
         Matricula matricula = matriculaRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Matrícula não encontrada"));
+                .orElseThrow(() -> new EntityNotFoundException("Matrícula não encontrada"));
         return matriculaMapper.toDTO(matricula);
     }
 

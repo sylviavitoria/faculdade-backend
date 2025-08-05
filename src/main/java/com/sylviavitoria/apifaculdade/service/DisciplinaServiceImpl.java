@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.sylviavitoria.apifaculdade.dto.DisciplinaRequestDTO;
 import com.sylviavitoria.apifaculdade.dto.DisciplinaResponseDTO;
 import com.sylviavitoria.apifaculdade.exception.BusinessException;
+import com.sylviavitoria.apifaculdade.exception.EntityNotFoundException;
 import com.sylviavitoria.apifaculdade.interfaces.DisciplinaService;
 import com.sylviavitoria.apifaculdade.mapper.DisciplinaMapper;
 import com.sylviavitoria.apifaculdade.model.Disciplina;
@@ -44,7 +45,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
         if (disciplinaRequestDTO.getProfessorId() != null) {
             Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
-                    .orElseThrow(() -> new BusinessException("Professor não encontrado"));
+                    .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
             disciplina.setProfessor(professor);
         }
 
@@ -67,7 +68,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
         if (disciplinaRequestDTO.getProfessorId() != null) {
             Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
-                    .orElseThrow(() -> new BusinessException("Professor não encontrado"));
+                    .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
             disciplina.setProfessor(professor);
         }
 
@@ -78,7 +79,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     @Transactional
     public void deletarDisciplina(Long id) {
         if (!disciplinaRepository.existsById(id)) {
-            throw new BusinessException("Disciplina não encontrada");
+            throw new EntityNotFoundException("Disciplina não encontrada");
         }
         disciplinaRepository.deleteById(id);
     }
@@ -87,7 +88,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public DisciplinaResponseDTO buscarDisciplinaPorId(Long id) {
         return disciplinaRepository.findById(id)
                 .map(disciplinaMapper::toDTO)
-                .orElseThrow(() -> new BusinessException("Disciplina não encontrada"));
+                .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
 
     @Override

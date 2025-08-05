@@ -16,6 +16,7 @@ import com.sylviavitoria.apifaculdade.model.Usuario;
 import com.sylviavitoria.apifaculdade.repository.AlunoRepository;
 import com.sylviavitoria.apifaculdade.repository.UsuarioRepository;
 import com.sylviavitoria.apifaculdade.exception.BusinessException;
+import com.sylviavitoria.apifaculdade.exception.EntityNotFoundException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -67,7 +68,7 @@ public class AlunoServiceImpl implements AlunoService {
         log.info("Atualizando aluno com ID: {}", id);
 
         Aluno alunoExistente = alunoRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Aluno não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
 
         if (!alunoExistente.getEmail().equals(alunoRequestDTO.getEmail()) &&
             usuarioRepository.existsByEmail(alunoRequestDTO.getEmail())) {
@@ -85,8 +86,8 @@ public class AlunoServiceImpl implements AlunoService {
         alunoExistente.setMatricula(alunoRequestDTO.getMatricula());
 
         Usuario usuario = usuarioRepository.findByAluno(alunoExistente)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado"));
-        
+                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+
         usuario.setEmail(alunoRequestDTO.getEmail());
         if (alunoRequestDTO.getSenha() != null && !alunoRequestDTO.getSenha().isEmpty()) {
             usuario.setSenha(passwordEncoder.encode(alunoRequestDTO.getSenha()));
@@ -104,7 +105,7 @@ public class AlunoServiceImpl implements AlunoService {
         log.info("Deletando aluno com ID: {}", id);
 
         Aluno aluno = alunoRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Aluno não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
 
         usuarioRepository.deleteByAluno(aluno);
         alunoRepository.delete(aluno);
@@ -115,7 +116,7 @@ public class AlunoServiceImpl implements AlunoService {
         log.info("Buscando aluno com ID: {}", id);
 
         Aluno aluno = alunoRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Aluno não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
 
         return alunoMapper.toDTO(aluno);
     }
@@ -143,7 +144,7 @@ public class AlunoServiceImpl implements AlunoService {
             .getName();
 
         Usuario usuario = usuarioRepository.findByEmail(emailUsuarioLogado)
-            .orElseThrow(() -> new BusinessException("Usuário não encontrado"));
+            .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
 
         if (usuario.getTipo() != TipoUsuario.ALUNO || usuario.getAluno() == null) {
             throw new BusinessException("Usuário não é um aluno");
