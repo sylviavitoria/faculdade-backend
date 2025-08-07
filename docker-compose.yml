@@ -42,7 +42,7 @@ services:
     environment:
       TZ: "America/Sao_Paulo"
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGLADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
