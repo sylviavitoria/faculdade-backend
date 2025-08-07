@@ -35,31 +35,43 @@ public class AlunoServiceImpl implements AlunoService {
     private final UsuarioRepository usuarioRepository;
     private final AlunoMapper alunoMapper;
     private final PasswordEncoder passwordEncoder;
+    private final LogService logService;
 
     @Override
     @Transactional
     public AlunoResponseDTO criarAluno(AlunoRequestDTO alunoRequestDTO) {
         log.info("Iniciando criação de aluno: {}", alunoRequestDTO.getNome());
 
-        if (usuarioRepository.existsByEmail(alunoRequestDTO.getEmail())) {
-            throw new BusinessException("Já existe um usuário com esse email");
+        String emailUsuarioLogado = getEmailUsuarioLogado();
+
+        try {
+            if (usuarioRepository.existsByEmail(alunoRequestDTO.getEmail())) {
+                throw new BusinessException("Já existe um usuário com esse email");
+            }
+            if (alunoRepository.existsByMatricula(alunoRequestDTO.getMatricula())) {
+                throw new BusinessException("Já existe um aluno com essa matrícula");
+            }
+
+            Aluno aluno = alunoMapper.toEntity(alunoRequestDTO);
+            Aluno alunoSalvo = alunoRepository.save(aluno);
+
+            Usuario usuario = new Usuario();
+            usuario.setEmail(alunoSalvo.getEmail());
+            usuario.setSenha(passwordEncoder.encode(alunoRequestDTO.getSenha()));
+            usuario.setTipo(TipoUsuario.ALUNO);
+            usuario.setAluno(alunoSalvo);
+
+            usuarioRepository.save(usuario);
+
+            logInfo("Aluno criado com sucesso: " + alunoSalvo.getNome() + " (ID: " + alunoSalvo.getId() + ")",
+                    "criarAluno", emailUsuarioLogado, "CREATE_ALUNO");
+
+            return alunoMapper.toDTO(alunoSalvo);
+        } catch (Exception e) {
+            logError("Erro ao criar aluno: " + e.getMessage(),
+                    "criarAluno", emailUsuarioLogado, "CREATE_ALUNO_ERROR");
+            throw e;
         }
-        if (alunoRepository.existsByMatricula(alunoRequestDTO.getMatricula())) {
-            throw new BusinessException("Já existe um aluno com essa matrícula");
-        }
-
-        Aluno aluno = alunoMapper.toEntity(alunoRequestDTO);
-        Aluno alunoSalvo = alunoRepository.save(aluno);
-
-        Usuario usuario = new Usuario();
-        usuario.setEmail(alunoSalvo.getEmail());
-        usuario.setSenha(passwordEncoder.encode(alunoRequestDTO.getSenha()));
-        usuario.setTipo(TipoUsuario.ALUNO);
-        usuario.setAluno(alunoSalvo);
-
-        usuarioRepository.save(usuario);
-
-        return alunoMapper.toDTO(alunoSalvo);
     }
 
     @Override
@@ -104,11 +116,24 @@ public class AlunoServiceImpl implements AlunoService {
     public void deletarAluno(Long id) {
         log.info("Deletando aluno com ID: {}", id);
 
-        Aluno aluno = alunoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
+        String emailUsuarioLogado = getEmailUsuarioLogado();
 
-        usuarioRepository.deleteByAluno(aluno);
-        alunoRepository.delete(aluno);
+        try {
+            Aluno aluno = alunoRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
+
+            String nomeAluno = aluno.getNome();
+
+            usuarioRepository.deleteByAluno(aluno);
+            alunoRepository.delete(aluno);
+
+            logInfo("Aluno deletado com sucesso: " + nomeAluno + " (ID: " + id + ")",
+                    "deletarAluno", emailUsuarioLogado, "DELETE_ALUNO");
+        } catch (Exception e) {
+            logError("Erro ao deletar aluno ID " + id + ": " + e.getMessage(),
+                    "deletarAluno", emailUsuarioLogado, "DELETE_ALUNO_ERROR");
+            throw e;
+        }
     }
 
     @Override
@@ -124,7 +149,7 @@ public class AlunoServiceImpl implements AlunoService {
     @Override
     public Page<AlunoResponseDTO> listarAlunos(int page, int size, List<String> sort) {
         log.info("Listando alunos com paginação - página: {}, tamanho: {}, ordenação: {}", page, size, sort);
-        
+
         Pageable pageable;
         if (sort != null && !sort.isEmpty()) {
             pageable = PageRequest.of(page, size, Sort.by(sort.toArray(new String[0])));
@@ -140,16 +165,28 @@ public class AlunoServiceImpl implements AlunoService {
     public AlunoResponseDTO buscarAlunoLogado() {
         log.info("Buscando dados do aluno logado");
         String emailUsuarioLogado = SecurityContextHolder.getContext()
-            .getAuthentication()
-            .getName();
+                .getAuthentication()
+                .getName();
 
         Usuario usuario = usuarioRepository.findByEmail(emailUsuarioLogado)
-            .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
 
         if (usuario.getTipo() != TipoUsuario.ALUNO || usuario.getAluno() == null) {
             throw new BusinessException("Usuário não é um aluno");
         }
 
         return alunoMapper.toDTO(usuario.getAluno());
+    }
+
+    private void logInfo(String message, String method, String user, String action) {
+        logService.saveLog("INFO", message, this.getClass().getSimpleName(), method, user, action);
+    }
+
+    private void logError(String message, String method, String user, String action) {
+        logService.saveLog("ERROR", message, this.getClass().getSimpleName(), method, user, action);
+    }
+
+    private String getEmailUsuarioLogado() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 }
