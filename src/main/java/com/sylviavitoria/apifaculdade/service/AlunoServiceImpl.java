@@ -79,36 +79,55 @@ public class AlunoServiceImpl implements AlunoService {
     public AlunoResponseDTO atualizarAluno(Long id, AlunoRequestDTO alunoRequestDTO) {
         log.info("Atualizando aluno com ID: {}", id);
 
-        Aluno alunoExistente = alunoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
+        String emailUsuarioLogado = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        if (!alunoExistente.getEmail().equals(alunoRequestDTO.getEmail()) &&
-            usuarioRepository.existsByEmail(alunoRequestDTO.getEmail())) {
-            throw new BusinessException("Email já está em uso");
+        try {
+            Aluno alunoExistente = alunoRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("Aluno não encontrado"));
+
+            if (!alunoExistente.getEmail().equals(alunoRequestDTO.getEmail()) &&
+                    usuarioRepository.existsByEmail(alunoRequestDTO.getEmail())) {
+                throw new BusinessException("Email já está em uso");
+            }
+            
+
+            if (!alunoExistente.getMatricula().equals(alunoRequestDTO.getMatricula()) &&
+                    alunoRepository.existsByMatricula(alunoRequestDTO.getMatricula())) {
+                throw new BusinessException("Matrícula já está em uso");
+            }
+
+            alunoExistente.setNome(alunoRequestDTO.getNome());
+            alunoExistente.setEmail(alunoRequestDTO.getEmail());
+            alunoExistente.setMatricula(alunoRequestDTO.getMatricula());
+
+            Usuario usuario = usuarioRepository.findByAluno(alunoExistente)
+                    .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+
+            usuario.setEmail(alunoRequestDTO.getEmail());
+            if (alunoRequestDTO.getSenha() != null && !alunoRequestDTO.getSenha().isEmpty()) {
+                usuario.setSenha(passwordEncoder.encode(alunoRequestDTO.getSenha()));
+            }
+
+            alunoRepository.save(alunoExistente);
+            usuarioRepository.save(usuario);
+
+            logService.saveLog("INFO",
+                    "Aluno atualizado com sucesso: " + alunoExistente.getNome() + " (ID: " + id + ")",
+                    this.getClass().getSimpleName(),
+                    "atualizarAluno",
+                    emailUsuarioLogado,
+                    "UPDATE_ALUNO");
+
+            return alunoMapper.toDTO(alunoExistente);
+        } catch (Exception e) {
+            logService.saveLog("ERROR",
+                    "Erro ao atualizar aluno ID " + id + ": " + e.getMessage(),
+                    this.getClass().getSimpleName(),
+                    "atualizarAluno",
+                    emailUsuarioLogado,
+                    "UPDATE_ALUNO_ERROR");
+            throw e;
         }
-
-
-        if (!alunoExistente.getMatricula().equals(alunoRequestDTO.getMatricula()) &&
-            alunoRepository.existsByMatricula(alunoRequestDTO.getMatricula())) {
-            throw new BusinessException("Matrícula já está em uso");
-        }
-
-        alunoExistente.setNome(alunoRequestDTO.getNome());
-        alunoExistente.setEmail(alunoRequestDTO.getEmail());
-        alunoExistente.setMatricula(alunoRequestDTO.getMatricula());
-
-        Usuario usuario = usuarioRepository.findByAluno(alunoExistente)
-                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
-
-        usuario.setEmail(alunoRequestDTO.getEmail());
-        if (alunoRequestDTO.getSenha() != null && !alunoRequestDTO.getSenha().isEmpty()) {
-            usuario.setSenha(passwordEncoder.encode(alunoRequestDTO.getSenha()));
-        }
-
-        alunoRepository.save(alunoExistente);
-        usuarioRepository.save(usuario);
-
-        return alunoMapper.toDTO(alunoExistente);
     }
 
     @Override
