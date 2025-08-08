@@ -87,9 +87,9 @@ src/
 
 ### **Professores**
 - ✅ Um professor pode ministrar **várias disciplinas**
-- ✅ Pode **lançar e editar notas** apenas das suas disciplinas
-- ✅ Visualiza **alunos matriculados** nas suas disciplinas
-- ✅ Acesso aos dados dos alunos das suas turmas
+- ✅ Pode **lançar e editar notas** 
+- ✅ Visualiza **alunos matriculados** 
+- ✅ Acesso aos dados dos alunos
 
 ### **Disciplinas e Matrículas**
 - ✅ Cada disciplina tem **um professor responsável**
