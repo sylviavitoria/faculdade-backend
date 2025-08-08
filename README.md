@@ -169,7 +169,6 @@ src/
 #### **🔑 Autenticação**
 ```http
 POST /api/v1/auth/login
-Content-Type: application/json
 
 {
   "email": "admin@exemplo.com",
@@ -409,7 +408,7 @@ docker compose up --build
 
 ### **🧪 Testando a API**
 
-#### 📚 **Via Swagger**  
+#### 📚 **Via Swagger**  **http://localhost:8080/swagger-ui.html**
 Para maior simplicidade na autenticação, recomenda-se testar a API diretamente pelo **Swagger**.  
 
 1. **Fazer Login**  
@@ -420,11 +419,10 @@ Para maior simplicidade na autenticação, recomenda-se testar a API diretamente
 
 ---
 
-#### **Via Postman/Insomnia**  
+#### 👨‍🔧 **Via Postman/Insomnia**  
 1. **Fazer Login:**  
 ```http
 POST http://localhost:8080/api/v1/auth/login
-Content-Type: application/json
 
 {
   "email": "admin@exemplo.com",
@@ -444,6 +442,12 @@ Authorization: Bearer Token{seu-token}
 GET http://localhost:8080/api/v1/alunos
 Authorization: Bearer Token {seu-token}
 ```
+
+
+
+
+
+
 
 
 
