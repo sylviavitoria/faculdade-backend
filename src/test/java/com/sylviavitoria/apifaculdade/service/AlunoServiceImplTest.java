@@ -11,6 +11,7 @@ import com.sylviavitoria.apifaculdade.model.Usuario;
 import com.sylviavitoria.apifaculdade.repository.AlunoRepository;
 import com.sylviavitoria.apifaculdade.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.contains;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AlunoServiceImpl Tests")
@@ -50,6 +53,9 @@ class AlunoServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private LogService logService;
 
     @Mock
     private SecurityContext securityContext;
@@ -95,16 +101,28 @@ class AlunoServiceImplTest {
         usuario.setAluno(aluno);
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     @DisplayName("Deve criar aluno com sucesso")
     void deveCriarAlunoComSucesso() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+        SecurityContextHolder.setContext(securityContext);
 
         when(usuarioRepository.existsByEmail("joao@email.com")).thenReturn(false);
         when(alunoRepository.existsByMatricula("2023001")).thenReturn(false);
         when(alunoMapper.toEntity(alunoRequestDTO)).thenReturn(aluno);
         when(alunoRepository.save(aluno)).thenReturn(aluno);
         when(passwordEncoder.encode("senha123")).thenReturn("senhaEncriptada");
-        when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
+        when(usuarioRepository.save(argThat(u -> 
+            u.getEmail().equals("joao@email.com") && 
+            u.getTipo() == TipoUsuario.ALUNO &&
+            u.getAluno() != null
+        ))).thenReturn(usuario);
         when(alunoMapper.toDTO(aluno)).thenReturn(alunoResponseDTO);
 
         AlunoResponseDTO resultado = alunoService.criarAluno(alunoRequestDTO);
@@ -120,13 +138,21 @@ class AlunoServiceImplTest {
         verify(alunoMapper).toEntity(alunoRequestDTO);
         verify(alunoRepository).save(aluno);
         verify(passwordEncoder).encode("senha123");
-        verify(usuarioRepository).save(any(Usuario.class));
+        verify(usuarioRepository).save(argThat(u -> 
+            u.getEmail().equals("joao@email.com") && 
+            u.getTipo() == TipoUsuario.ALUNO &&
+            u.getAluno() != null
+        ));
         verify(alunoMapper).toDTO(aluno);
+        verify(logService).saveLog(eq("INFO"), contains("Aluno criado com sucesso"), eq("AlunoServiceImpl"), eq("criarAluno"), eq("admin@email.com"), eq("CREATE_ALUNO"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando email já existe")
     void deveLancarExcecaoQuandoEmailJaExiste() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+        SecurityContextHolder.setContext(securityContext);
 
         when(usuarioRepository.existsByEmail("joao@email.com")).thenReturn(true);
 
@@ -138,11 +164,15 @@ class AlunoServiceImplTest {
         verifyNoInteractions(alunoRepository);
         verifyNoInteractions(alunoMapper);
         verifyNoInteractions(passwordEncoder);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar aluno"), eq("AlunoServiceImpl"), eq("criarAluno"), eq("admin@email.com"), eq("CREATE_ALUNO_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando matrícula já existe")
     void deveLancarExcecaoQuandoMatriculaJaExiste() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+        SecurityContextHolder.setContext(securityContext);
 
         when(usuarioRepository.existsByEmail("joao@email.com")).thenReturn(false);
         when(alunoRepository.existsByMatricula("2023001")).thenReturn(true);
@@ -156,6 +186,7 @@ class AlunoServiceImplTest {
         verifyNoMoreInteractions(alunoRepository);
         verifyNoInteractions(alunoMapper);
         verifyNoInteractions(passwordEncoder);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar aluno"), eq("AlunoServiceImpl"), eq("criarAluno"), eq("admin@email.com"), eq("CREATE_ALUNO_ERROR"));
     }
 
     @Test
@@ -253,6 +284,12 @@ class AlunoServiceImplTest {
     @DisplayName("Deve deletar aluno com sucesso")
     void deveDeletarAlunoComSucesso() {
 
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+
         when(alunoRepository.findById(1L)).thenReturn(Optional.of(aluno));
 
         alunoService.deletarAluno(1L);
@@ -260,11 +297,17 @@ class AlunoServiceImplTest {
         verify(alunoRepository).findById(1L);
         verify(usuarioRepository).deleteByAluno(aluno);
         verify(alunoRepository).delete(aluno);
+        verify(logService).saveLog(eq("INFO"), contains("Aluno deletado com sucesso"), eq("AlunoServiceImpl"), eq("deletarAluno"), eq("admin@email.com"), eq("DELETE_ALUNO"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao deletar aluno não encontrado")
     void deveLancarExcecaoAoDeletarAlunoNaoEncontrado() {
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
 
         when(alunoRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -280,6 +323,12 @@ class AlunoServiceImplTest {
     @Test
     @DisplayName("Deve atualizar aluno com sucesso")
     void deveAtualizarAlunoComSucesso() {
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
 
         AlunoRequestDTO requestAtualizado = new AlunoRequestDTO();
         requestAtualizado.setNome("João Silva Atualizado");
@@ -308,11 +357,18 @@ class AlunoServiceImplTest {
         verify(alunoRepository).save(aluno);
         verify(usuarioRepository).save(usuario);
         verify(alunoMapper).toDTO(aluno);
+        verify(logService).saveLog(eq("INFO"), contains("Aluno atualizado com sucesso"), eq("AlunoServiceImpl"), eq("atualizarAluno"), eq("admin@email.com"), eq("UPDATE_ALUNO"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar aluno não encontrado")
     void deveLancarExcecaoAoAtualizarAlunoNaoEncontrado() {
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
 
         when(alunoRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -330,6 +386,12 @@ class AlunoServiceImplTest {
     @Test
     @DisplayName("Deve lançar exceção ao atualizar com email já em uso")
     void deveLancarExcecaoAoAtualizarComEmailJaEmUso() {
+
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
 
         AlunoRequestDTO requestComEmailExistente = new AlunoRequestDTO();
         requestComEmailExistente.setNome("João Silva");
@@ -353,6 +415,12 @@ class AlunoServiceImplTest {
     @DisplayName("Deve lançar exceção ao atualizar com matrícula já em uso")
     void deveLancarExcecaoAoAtualizarComMatriculaJaEmUso() {
 
+        SecurityContext securityContext = mock(SecurityContext.class);
+        Authentication authentication = mock(Authentication.class);
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+
         AlunoRequestDTO requestComMatriculaExistente = new AlunoRequestDTO();
         requestComMatriculaExistente.setNome("João Silva");
         requestComMatriculaExistente.setEmail("joao@email.com");
@@ -374,10 +442,10 @@ class AlunoServiceImplTest {
     @Test
     @DisplayName("Deve buscar aluno logado com sucesso")
     void deveBuscarAlunoLogadoComSucesso() {
-
-        SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn("joao@email.com");
+        SecurityContextHolder.setContext(securityContext);
+        
         when(usuarioRepository.findByEmail("joao@email.com")).thenReturn(Optional.of(usuario));
         when(alunoMapper.toDTO(aluno)).thenReturn(alunoResponseDTO);
 
@@ -393,10 +461,10 @@ class AlunoServiceImplTest {
     @Test
     @DisplayName("Deve lançar exceção quando usuário logado não encontrado")
     void deveLancarExcecaoQuandoUsuarioLogadoNaoEncontrado() {
-
-        SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn("joao@email.com");
+        SecurityContextHolder.setContext(securityContext);
+        
         when(usuarioRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> alunoService.buscarAlunoLogado())
@@ -415,9 +483,10 @@ class AlunoServiceImplTest {
         usuarioAdmin.setTipo(TipoUsuario.ADMIN);
         usuarioAdmin.setAluno(null);
 
-        SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn("admin@email.com");
+        SecurityContextHolder.setContext(securityContext);
+        
         when(usuarioRepository.findByEmail("admin@email.com")).thenReturn(Optional.of(usuarioAdmin));
 
         assertThatThrownBy(() -> alunoService.buscarAlunoLogado())
