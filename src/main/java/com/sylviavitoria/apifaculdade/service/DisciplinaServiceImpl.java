@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Service;
 
@@ -31,57 +32,100 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final DisciplinaRepository disciplinaRepository;
     private final ProfessorRepository professorRepository;
     private final DisciplinaMapper disciplinaMapper;
+    private final LogService logService;
 
     @Override
     @Transactional
     public DisciplinaResponseDTO criarDisciplina(DisciplinaRequestDTO disciplinaRequestDTO) {
         log.info("Iniciando criação de disciplina: {}", disciplinaRequestDTO.getNome());
 
-        if (disciplinaRepository.existsByCodigo(disciplinaRequestDTO.getCodigo())) {
-            throw new BusinessException("Já existe uma disciplina com esse código");
+        String emailUsuarioLogado = getEmailUsuarioLogado();
+
+        try {
+            if (disciplinaRepository.existsByCodigo(disciplinaRequestDTO.getCodigo())) {
+                throw new BusinessException("Já existe uma disciplina com esse código");
+            }
+
+            Disciplina disciplina = disciplinaMapper.toEntity(disciplinaRequestDTO);
+
+            if (disciplinaRequestDTO.getProfessorId() != null) {
+                Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
+                        .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
+                disciplina.setProfessor(professor);
+            }
+
+            Disciplina disciplinaSalva = disciplinaRepository.save(disciplina);
+
+            logInfo("Disciplina criada com sucesso: " + disciplinaSalva.getNome() + " (ID: " + disciplinaSalva.getId()
+                    + ")",
+                    "criarDisciplina", emailUsuarioLogado, "CREATE_DISCIPLINA");
+
+            return disciplinaMapper.toDTO(disciplinaSalva);
+        } catch (Exception e) {
+            logError("Erro ao criar disciplina: " + e.getMessage(), "criarDisciplina", emailUsuarioLogado,
+                    "CREATE_DISCIPLINA_ERROR");
+            throw e;
         }
-
-        Disciplina disciplina = disciplinaMapper.toEntity(disciplinaRequestDTO);
-
-        if (disciplinaRequestDTO.getProfessorId() != null) {
-            Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
-                    .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
-            disciplina.setProfessor(professor);
-        }
-
-        Disciplina disciplinaSalva = disciplinaRepository.save(disciplina);
-        return disciplinaMapper.toDTO(disciplinaSalva);
     }
 
     @Override
     @Transactional
     public DisciplinaResponseDTO atualizarDisciplina(Long id, DisciplinaRequestDTO disciplinaRequestDTO) {
-        Disciplina disciplina = disciplinaRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Disciplina não encontrada"));
+        String emailUsuarioLogado = getEmailUsuarioLogado();
+        
+        try {
+            Disciplina disciplina = disciplinaRepository.findById(id)
+                    .orElseThrow(() -> new BusinessException("Disciplina não encontrada"));
 
-        if (!disciplina.getCodigo().equals(disciplinaRequestDTO.getCodigo()) &&
-                disciplinaRepository.existsByCodigo(disciplinaRequestDTO.getCodigo())) {
-            throw new BusinessException("Já existe uma disciplina com esse código");
+            if (!disciplina.getCodigo().equals(disciplinaRequestDTO.getCodigo()) &&
+                    disciplinaRepository.existsByCodigo(disciplinaRequestDTO.getCodigo())) {
+                throw new BusinessException("Já existe uma disciplina com esse código");
+            }
+
+            disciplinaMapper.updateEntity(disciplinaRequestDTO, disciplina);
+
+            if (disciplinaRequestDTO.getProfessorId() != null) {
+                Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
+                        .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
+                disciplina.setProfessor(professor);
+            }
+
+            Disciplina disciplinaAtualizada = disciplinaRepository.save(disciplina);
+            
+            logInfo("Disciplina atualizada com sucesso: " + disciplinaAtualizada.getNome() + " (ID: " + disciplinaAtualizada.getId() + ")",
+                    "atualizarDisciplina", emailUsuarioLogado, "UPDATE_DISCIPLINA");
+
+            return disciplinaMapper.toDTO(disciplinaAtualizada);
+        } catch (Exception e) {
+            logError("Erro ao atualizar disciplina: " + e.getMessage(), "atualizarDisciplina", emailUsuarioLogado, "UPDATE_DISCIPLINA_ERROR");
+            throw e;
         }
-
-        disciplinaMapper.updateEntity(disciplinaRequestDTO, disciplina);
-
-        if (disciplinaRequestDTO.getProfessorId() != null) {
-            Professor professor = professorRepository.findById(disciplinaRequestDTO.getProfessorId())
-                    .orElseThrow(() -> new EntityNotFoundException("Professor não encontrado"));
-            disciplina.setProfessor(professor);
-        }
-
-        return disciplinaMapper.toDTO(disciplinaRepository.save(disciplina));
     }
+
 
     @Override
     @Transactional
     public void deletarDisciplina(Long id) {
-        if (!disciplinaRepository.existsById(id)) {
-            throw new EntityNotFoundException("Disciplina não encontrada");
+        String emailUsuarioLogado = getEmailUsuarioLogado();
+
+        try {
+            if (!disciplinaRepository.existsById(id)) {
+                throw new EntityNotFoundException("Disciplina não encontrada");
+            }
+
+            Disciplina disciplina = disciplinaRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
+
+            disciplinaRepository.deleteById(id);
+
+            logInfo("Disciplina deletada com sucesso: " + disciplina.getNome() + " (ID: " + disciplina.getId() + ")",
+                    "deletarDisciplina", emailUsuarioLogado, "DELETE_DISCIPLINA");
+        } catch (Exception e) {
+
+            logError("Erro ao deletar disciplina: " + e.getMessage(), "deletarDisciplina", emailUsuarioLogado,
+                    "DELETE_DISCIPLINA_ERROR");
+            throw e;
         }
-        disciplinaRepository.deleteById(id);
     }
 
     @Override
@@ -102,5 +146,17 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
         return disciplinaRepository.findAll(pageable)
                 .map(disciplinaMapper::toDTO);
+    }
+
+    private void logInfo(String message, String method, String user, String action) {
+        logService.saveLog("INFO", message, this.getClass().getSimpleName(), method, user, action);
+    }
+
+    private void logError(String message, String method, String user, String action) {
+        logService.saveLog("ERROR", message, this.getClass().getSimpleName(), method, user, action);
+    }
+
+    private String getEmailUsuarioLogado() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 }
