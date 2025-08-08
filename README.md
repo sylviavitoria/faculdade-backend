@@ -48,15 +48,6 @@ Criar uma aplicação completa para gerenciar um sistema acadêmico com:
 - **Spring Security Test** - Testes de segurança e autenticação
 > Foram desenvolvidos testes unitários e de integração cobrindo models, services e controllers da aplicação.
 
-### **Padrões Implementados**
-- **REST API** com boas práticas
-- **DTO Pattern** para transferência de dados
-- **Repository Pattern** para acesso a dados
-- **Service Layer** para lógica de negócio
-- **Exception Handling** centralizado
-- **Paginação e Ordenação** em consultas
-- **Logs Estruturados** com LogBack
-
 ---
 
 ## 📁 **Estrutura do Projeto**
