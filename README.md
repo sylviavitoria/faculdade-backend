@@ -6,7 +6,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?style=flat&logo=mongodb&logoColor=white)](https://mongodb.com/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com/)
 
-Uma **API REST** para gerenciamento de sistemas acadêmicos, desenvolvida com Spring Boot. O sistema permite o gerenciamento de **alunos**, **professores**, **disciplinas** e **matrículas**, com autenticação JWT e sistema de logs robusto.
+Uma **API REST** para gerenciamento de sistemas acadêmicos, desenvolvida com Spring Boot. O sistema permite o gerenciamento de **alunos**, **professores**, **disciplinas** e **matrículas**, com autenticação via Spring Security e JWT, além de um sistema de logs utilizando MongoDB.
 
 ---
 
