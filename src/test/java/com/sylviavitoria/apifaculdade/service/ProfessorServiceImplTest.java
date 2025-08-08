@@ -11,6 +11,7 @@ import com.sylviavitoria.apifaculdade.model.Usuario;
 import com.sylviavitoria.apifaculdade.repository.ProfessorRepository;
 import com.sylviavitoria.apifaculdade.repository.UsuarioRepository;
 import com.sylviavitoria.apifaculdade.security.UsuarioUserDetails;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.contains;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProfessorServiceImpl Tests")
@@ -52,6 +55,9 @@ class ProfessorServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private LogService logService;
 
     @Mock
     private SecurityContext securityContext;
@@ -96,15 +102,27 @@ class ProfessorServiceImplTest {
         usuario.setProfessor(professor);
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void configurarSecurityContext() {
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+    }
+
     @Test
     @DisplayName("Deve criar professor com sucesso")
     void deveCriarProfessorComSucesso() {
+        configurarSecurityContext();
 
         when(usuarioRepository.existsByEmail("maria.silva@universidade.com")).thenReturn(false);
         when(professorMapper.toEntity(professorRequestDTO)).thenReturn(professor);
         when(professorRepository.save(professor)).thenReturn(professor);
         when(passwordEncoder.encode("senha123")).thenReturn("senhaEncriptada");
-        when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
+        when(usuarioRepository.save(argThat(u -> u.getEmail().equals("maria.silva@universidade.com") && u.getTipo() == TipoUsuario.PROFESSOR))).thenReturn(usuario);
         when(professorMapper.toDTO(professor)).thenReturn(professorResponseDTO);
 
         ProfessorResponseDTO resultado = professorService.criarProfessor(professorRequestDTO);
@@ -117,13 +135,15 @@ class ProfessorServiceImplTest {
         verify(professorMapper).toEntity(professorRequestDTO);
         verify(professorRepository).save(professor);
         verify(passwordEncoder).encode("senha123");
-        verify(usuarioRepository).save(any(Usuario.class));
+        verify(usuarioRepository).save(argThat(u -> u.getEmail().equals("maria.silva@universidade.com") && u.getTipo() == TipoUsuario.PROFESSOR));
         verify(professorMapper).toDTO(professor);
+        verify(logService).saveLog(eq("INFO"), contains("Professor criado com sucesso"), eq("ProfessorServiceImpl"), eq("criarProfessor"), eq("admin@email.com"), eq("CREATE_PROFESSOR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando email já existe")
     void deveLancarExcecaoQuandoEmailJaExiste() {
+        configurarSecurityContext();
 
         when(usuarioRepository.existsByEmail("maria.silva@universidade.com")).thenReturn(true);
 
@@ -135,6 +155,7 @@ class ProfessorServiceImplTest {
         verifyNoInteractions(professorMapper);
         verifyNoInteractions(professorRepository);
         verifyNoInteractions(passwordEncoder);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar professor"), eq("ProfessorServiceImpl"), eq("criarProfessor"), eq("admin@email.com"), eq("CREATE_PROFESSOR_ERROR"));
     }
 
     @Test
@@ -231,6 +252,7 @@ class ProfessorServiceImplTest {
     @Test
     @DisplayName("Deve deletar professor com sucesso")
     void deveDeletarProfessorComSucesso() {
+        configurarSecurityContext();
 
         when(professorRepository.findById(1L)).thenReturn(Optional.of(professor));
 
@@ -239,11 +261,13 @@ class ProfessorServiceImplTest {
         verify(professorRepository).findById(1L);
         verify(usuarioRepository).deleteByProfessor(professor);
         verify(professorRepository).delete(professor);
+        verify(logService).saveLog(eq("INFO"), contains("Professor deletado com sucesso"), eq("ProfessorServiceImpl"), eq("deletarProfessor"), eq("admin@email.com"), eq("DELETE_PROFESSOR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao deletar professor não encontrado")
     void deveLancarExcecaoAoDeletarProfessorNaoEncontrado() {
+        configurarSecurityContext();
 
         when(professorRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -254,11 +278,13 @@ class ProfessorServiceImplTest {
         verify(professorRepository).findById(1L);
         verifyNoMoreInteractions(professorRepository);
         verifyNoInteractions(usuarioRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao deletar professor"), eq("ProfessorServiceImpl"), eq("deletarProfessor"), eq("admin@email.com"), eq("DELETE_PROFESSOR"));
     }
 
     @Test
     @DisplayName("Deve atualizar professor com sucesso")
     void deveAtualizarProfessorComSucesso() {
+        configurarSecurityContext();
 
         ProfessorRequestDTO requestAtualizado = new ProfessorRequestDTO();
         requestAtualizado.setNome("Maria Silva Atualizada");
@@ -290,11 +316,13 @@ class ProfessorServiceImplTest {
         verify(passwordEncoder).encode("novaSenha123");
         verify(usuarioRepository).save(usuario);
         verify(professorMapper).toDTO(professorAtualizado);
+        verify(logService).saveLog(eq("INFO"), contains("Professor atualizado com sucesso"), eq("ProfessorServiceImpl"), eq("atualizarProfessor"), eq("admin@email.com"), eq("UPDATE_PROFESSOR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar professor não encontrado")
     void deveLancarExcecaoAoAtualizarProfessorNaoEncontrado() {
+        configurarSecurityContext();
 
         when(professorRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -307,11 +335,13 @@ class ProfessorServiceImplTest {
         verifyNoInteractions(usuarioRepository);
         verifyNoInteractions(professorMapper);
         verifyNoInteractions(passwordEncoder);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar professor"), eq("ProfessorServiceImpl"), eq("atualizarProfessor"), eq("admin@email.com"), eq("UPDATE_PROFESSOR_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar quando usuário do professor não encontrado")
     void deveLancarExcecaoAoAtualizarQuandoUsuarioDoProfessorNaoEncontrado() {
+        configurarSecurityContext();
 
         Professor professorAtualizado = new Professor();
         professorAtualizado.setId(1L);
@@ -331,6 +361,7 @@ class ProfessorServiceImplTest {
         verify(usuarioRepository).findByProfessor(professor);
         verifyNoMoreInteractions(usuarioRepository);
         verifyNoInteractions(passwordEncoder);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar professor"), eq("ProfessorServiceImpl"), eq("atualizarProfessor"), eq("admin@email.com"), eq("UPDATE_PROFESSOR_ERROR"));
     }
 
     @Test

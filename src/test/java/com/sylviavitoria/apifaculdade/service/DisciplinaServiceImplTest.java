@@ -11,6 +11,7 @@ import com.sylviavitoria.apifaculdade.model.Professor;
 import com.sylviavitoria.apifaculdade.repository.DisciplinaRepository;
 import com.sylviavitoria.apifaculdade.repository.ProfessorRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +34,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.contains;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DisciplinaServiceImpl Tests")
@@ -43,6 +48,15 @@ class DisciplinaServiceImplTest {
 
     @Mock
     private DisciplinaMapper disciplinaMapper;
+
+    @Mock
+    private LogService logService;
+
+    @Mock
+    private SecurityContext securityContext;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private DisciplinaServiceImpl disciplinaService;
@@ -84,9 +98,21 @@ class DisciplinaServiceImplTest {
         disciplinaResponseDTO.setProfessor(professorResponseDTO);
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void configurarSecurityContext() {
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+    }
+
     @Test
     @DisplayName("Deve criar disciplina com sucesso")
     void deveCriarDisciplinaComSucesso() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.existsByCodigo("AED101")).thenReturn(false);
         when(disciplinaMapper.toEntity(disciplinaRequestDTO)).thenReturn(disciplina);
@@ -107,11 +133,13 @@ class DisciplinaServiceImplTest {
         verify(professorRepository).findById(1L);
         verify(disciplinaRepository).save(disciplina);
         verify(disciplinaMapper).toDTO(disciplina);
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina criada com sucesso"), eq("DisciplinaServiceImpl"), eq("criarDisciplina"), eq("admin@email.com"), eq("CREATE_DISCIPLINA"));
     }
 
     @Test
     @DisplayName("Deve criar disciplina sem professor com sucesso")
     void deveCriarDisciplinaSemProfessorComSucesso() {
+        configurarSecurityContext();
 
         disciplinaRequestDTO.setProfessorId(null);
         disciplina.setProfessor(null);
@@ -135,11 +163,13 @@ class DisciplinaServiceImplTest {
         verify(disciplinaRepository).save(disciplina);
         verify(disciplinaMapper).toDTO(disciplina);
         verifyNoInteractions(professorRepository);
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina criada com sucesso"), eq("DisciplinaServiceImpl"), eq("criarDisciplina"), eq("admin@email.com"), eq("CREATE_DISCIPLINA"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando código já existe")
     void deveLancarExcecaoQuandoCodigoJaExiste() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.existsByCodigo("AED101")).thenReturn(true);
 
@@ -151,11 +181,13 @@ class DisciplinaServiceImplTest {
         verifyNoInteractions(disciplinaMapper);
         verifyNoInteractions(professorRepository);
         verifyNoMoreInteractions(disciplinaRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar disciplina"), eq("DisciplinaServiceImpl"), eq("criarDisciplina"), eq("admin@email.com"), eq("CREATE_DISCIPLINA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando professor não encontrado")
     void deveLancarExcecaoQuandoProfessorNaoEncontrado() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.existsByCodigo("AED101")).thenReturn(false);
         when(disciplinaMapper.toEntity(disciplinaRequestDTO)).thenReturn(disciplina);
@@ -169,6 +201,7 @@ class DisciplinaServiceImplTest {
         verify(disciplinaMapper).toEntity(disciplinaRequestDTO);
         verify(professorRepository).findById(1L);
         verifyNoMoreInteractions(disciplinaRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar disciplina"), eq("DisciplinaServiceImpl"), eq("criarDisciplina"), eq("admin@email.com"), eq("CREATE_DISCIPLINA_ERROR"));
     }
 
     @Test
@@ -268,19 +301,23 @@ class DisciplinaServiceImplTest {
     @Test
     @DisplayName("Deve deletar disciplina com sucesso")
     void deveDeletarDisciplinaComSucesso() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.existsById(1L)).thenReturn(true);
+        when(disciplinaRepository.findById(1L)).thenReturn(Optional.of(disciplina));
 
         disciplinaService.deletarDisciplina(1L);
 
-
         verify(disciplinaRepository).existsById(1L);
+        verify(disciplinaRepository).findById(1L);
         verify(disciplinaRepository).deleteById(1L);
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina deletada com sucesso"), eq("DisciplinaServiceImpl"), eq("deletarDisciplina"), eq("admin@email.com"), eq("DELETE_DISCIPLINA"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao deletar disciplina não encontrada")
     void deveLancarExcecaoAoDeletarDisciplinaNaoEncontrada() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.existsById(1L)).thenReturn(false);
 
@@ -290,11 +327,13 @@ class DisciplinaServiceImplTest {
 
         verify(disciplinaRepository).existsById(1L);
         verifyNoMoreInteractions(disciplinaRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao deletar disciplina"), eq("DisciplinaServiceImpl"), eq("deletarDisciplina"), eq("admin@email.com"), eq("DELETE_DISCIPLINA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve atualizar disciplina com sucesso")
     void deveAtualizarDisciplinaComSucesso() {
+        configurarSecurityContext();
 
         DisciplinaRequestDTO requestAtualizado = new DisciplinaRequestDTO();
         requestAtualizado.setNome("Algoritmos Avançados");
@@ -321,11 +360,13 @@ class DisciplinaServiceImplTest {
         verify(professorRepository).findById(2L);
         verify(disciplinaRepository).save(disciplina);
         verify(disciplinaMapper).toDTO(disciplina);
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina atualizada com sucesso"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA"));
     }
 
     @Test
     @DisplayName("Deve atualizar disciplina mantendo o mesmo código")
     void deveAtualizarDisciplinaManendoMesmoCodigo() {
+        configurarSecurityContext();
 
         DisciplinaRequestDTO requestAtualizado = new DisciplinaRequestDTO();
         requestAtualizado.setNome("Algoritmos e Estruturas de Dados - Avançado");
@@ -347,11 +388,13 @@ class DisciplinaServiceImplTest {
         verify(disciplinaRepository).save(disciplina);
         verify(disciplinaMapper).toDTO(disciplina);
         verify(disciplinaRepository, never()).existsByCodigo("AED101");
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina atualizada com sucesso"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar disciplina não encontrada")
     void deveLancarExcecaoAoAtualizarDisciplinaNaoEncontrada() {
+        configurarSecurityContext();
 
         when(disciplinaRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -363,11 +406,13 @@ class DisciplinaServiceImplTest {
         verifyNoMoreInteractions(disciplinaRepository);
         verifyNoInteractions(professorRepository);
         verifyNoInteractions(disciplinaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar disciplina"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar com código já em uso")
     void deveLancarExcecaoAoAtualizarComCodigoJaEmUso() {
+        configurarSecurityContext();
 
         DisciplinaRequestDTO requestComCodigoExistente = new DisciplinaRequestDTO();
         requestComCodigoExistente.setNome("Nova Disciplina");
@@ -386,11 +431,13 @@ class DisciplinaServiceImplTest {
         verifyNoMoreInteractions(disciplinaRepository);
         verifyNoInteractions(professorRepository);
         verifyNoInteractions(disciplinaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar disciplina"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar com professor não encontrado")
     void deveLancarExcecaoAoAtualizarComProfessorNaoEncontrado() {
+        configurarSecurityContext();
 
         DisciplinaRequestDTO requestComProfessorInexistente = new DisciplinaRequestDTO();
         requestComProfessorInexistente.setNome("Algoritmos");
@@ -408,11 +455,13 @@ class DisciplinaServiceImplTest {
         verify(disciplinaMapper).updateEntity(requestComProfessorInexistente, disciplina);
         verify(professorRepository).findById(999L);
         verifyNoMoreInteractions(disciplinaRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar disciplina"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve atualizar disciplina sem professor")
     void deveAtualizarDisciplinaSemProfessor() {
+        configurarSecurityContext();
 
         DisciplinaRequestDTO requestSemProfessor = new DisciplinaRequestDTO();
         requestSemProfessor.setNome("Algoritmos Independentes");
@@ -434,5 +483,6 @@ class DisciplinaServiceImplTest {
         verify(disciplinaRepository).save(disciplina);
         verify(disciplinaMapper).toDTO(disciplina);
         verifyNoInteractions(professorRepository);
+        verify(logService).saveLog(eq("INFO"), contains("Disciplina atualizada com sucesso"), eq("DisciplinaServiceImpl"), eq("atualizarDisciplina"), eq("admin@email.com"), eq("UPDATE_DISCIPLINA"));
     }
 }

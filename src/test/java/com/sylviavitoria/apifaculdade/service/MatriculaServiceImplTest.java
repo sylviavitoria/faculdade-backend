@@ -13,6 +13,8 @@ import com.sylviavitoria.apifaculdade.model.Matricula;
 import com.sylviavitoria.apifaculdade.repository.AlunoRepository;
 import com.sylviavitoria.apifaculdade.repository.DisciplinaRepository;
 import com.sylviavitoria.apifaculdade.repository.MatriculaRepository;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -34,6 +39,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +59,15 @@ class MatriculaServiceImplTest {
 
     @Mock
     private MatriculaMapper matriculaMapper;
+
+    @Mock
+    private LogService logService;
+
+    @Mock
+    private SecurityContext securityContext;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private MatriculaServiceImpl matriculaService;
@@ -97,9 +114,21 @@ class MatriculaServiceImplTest {
                 .build();
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void configurarSecurityContext() {
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn("admin@email.com");
+    }
+
     @Test
     @DisplayName("Deve criar matrícula com sucesso")
     void deveCriarMatriculaComSucesso() {
+        configurarSecurityContext();
 
         when(matriculaRepository.existsByAlunoIdAndDisciplinaId(1L, 1L)).thenReturn(false);
         when(alunoRepository.findById(1L)).thenReturn(Optional.of(aluno));
@@ -118,11 +147,13 @@ class MatriculaServiceImplTest {
         verify(disciplinaRepository).findById(1L);
         verify(matriculaRepository).save(any(Matricula.class));
         verify(matriculaMapper).toDTO(matricula);
+        verify(logService).saveLog(eq("INFO"), contains("Matrícula criada com sucesso"), eq("MatriculaServiceImpl"), eq("criarMatricula"), eq("admin@email.com"), eq("CREATE_MATRICULA"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando aluno já está matriculado na disciplina")
     void deveLancarExcecaoQuandoAlunoJaMatriculado() {
+        configurarSecurityContext();
 
         when(matriculaRepository.existsByAlunoIdAndDisciplinaId(1L, 1L)).thenReturn(true);
 
@@ -134,11 +165,13 @@ class MatriculaServiceImplTest {
         verifyNoInteractions(alunoRepository);
         verifyNoInteractions(disciplinaRepository);
         verifyNoInteractions(matriculaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar matrícula"), eq("MatriculaServiceImpl"), eq("criarMatricula"), eq("admin@email.com"), eq("CREATE_MATRICULA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando aluno não encontrado")
     void deveLancarExcecaoQuandoAlunoNaoEncontrado() {
+        configurarSecurityContext();
 
         when(matriculaRepository.existsByAlunoIdAndDisciplinaId(1L, 1L)).thenReturn(false);
         when(alunoRepository.findById(1L)).thenReturn(Optional.empty());
@@ -151,11 +184,14 @@ class MatriculaServiceImplTest {
         verify(alunoRepository).findById(1L);
         verifyNoInteractions(disciplinaRepository);
         verifyNoInteractions(matriculaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar matrícula"), eq("MatriculaServiceImpl"), eq("criarMatricula"), eq("admin@email.com"), eq("CREATE_MATRICULA_ERROR"));
+
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando disciplina não encontrada")
     void deveLancarExcecaoQuandoDisciplinaNaoEncontrada() {
+        configurarSecurityContext();
 
         when(matriculaRepository.existsByAlunoIdAndDisciplinaId(1L, 1L)).thenReturn(false);
         when(alunoRepository.findById(1L)).thenReturn(Optional.of(aluno));
@@ -170,6 +206,8 @@ class MatriculaServiceImplTest {
         verify(disciplinaRepository).findById(1L);
         verifyNoMoreInteractions(matriculaRepository);
         verifyNoInteractions(matriculaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao criar matrícula"), eq("MatriculaServiceImpl"), eq("criarMatricula"), eq("admin@email.com"), eq("CREATE_MATRICULA_ERROR"));
+
     }
 
     @Test
@@ -265,32 +303,37 @@ class MatriculaServiceImplTest {
     @Test
     @DisplayName("Deve deletar matrícula com sucesso")
     void deveDeletarMatriculaComSucesso() {
+        configurarSecurityContext();
 
-        when(matriculaRepository.existsById(1L)).thenReturn(true);
+        when(matriculaRepository.findById(1L)).thenReturn(Optional.of(matricula));
 
         matriculaService.deletarMatricula(1L);
 
-        verify(matriculaRepository).existsById(1L);
-        verify(matriculaRepository).deleteById(1L);
+        verify(matriculaRepository).findById(1L);
+        verify(matriculaRepository).delete(matricula);
+        verify(logService).saveLog(eq("INFO"), contains("Matrícula deletada com sucesso"), eq("MatriculaServiceImpl"), eq("deletarMatricula"), eq("admin@email.com"), eq("DELETE_MATRICULA"));
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao deletar matrícula não encontrada")
     void deveLancarExcecaoAoDeletarMatriculaNaoEncontrada() {
+        configurarSecurityContext();
 
-        when(matriculaRepository.existsById(1L)).thenReturn(false);
+        when(matriculaRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> matriculaService.deletarMatricula(1L))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Matrícula não encontrada");
 
-        verify(matriculaRepository).existsById(1L);
+        verify(matriculaRepository).findById(1L);
         verifyNoMoreInteractions(matriculaRepository);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao deletar matrícula"), eq("MatriculaServiceImpl"), eq("deletarMatricula"), eq("admin@email.com"), eq("DELETE_MATRICULA_ERROR"));
     }
 
     @Test
     @DisplayName("Deve atualizar notas com sucesso")
     void deveAtualizarNotasComSucesso() {
+        configurarSecurityContext();
 
         when(matriculaRepository.findById(1L)).thenReturn(Optional.of(matricula));
         when(matriculaRepository.save(matricula)).thenReturn(matricula);
@@ -305,11 +348,14 @@ class MatriculaServiceImplTest {
         verify(matriculaRepository).findById(1L);
         verify(matriculaRepository).save(matricula);
         verify(matriculaMapper).toDTO(matricula);
+        verify(logService).saveLog(eq("INFO"), contains("Notas atualizadas com sucesso"), eq("MatriculaServiceImpl"), eq("atualizarNotas"), eq("admin@email.com"), eq("UPDATE_NOTAS"));
+
     }
 
     @Test
     @DisplayName("Deve atualizar apenas nota1 quando nota2 é null")
     void deveAtualizarApenasNota1QuandoNota2EhNull() {
+        configurarSecurityContext();
 
         NotaRequestDTO notaComApenasnota1 = new NotaRequestDTO();
         notaComApenasnota1.setNota1(BigDecimal.valueOf(9.0));
@@ -328,11 +374,14 @@ class MatriculaServiceImplTest {
         verify(matriculaRepository).findById(1L);
         verify(matriculaRepository).save(matricula);
         verify(matriculaMapper).toDTO(matricula);
+        verify(logService).saveLog(eq("INFO"), contains("Notas atualizadas com sucesso para matrícula"), eq("MatriculaServiceImpl"), eq("atualizarNotas"), eq("admin@email.com"), eq("UPDATE_NOTAS"));
+
     }
 
     @Test
     @DisplayName("Deve atualizar apenas nota2 quando nota1 é null")
     void deveAtualizarApenasNota2QuandoNota1EhNull() {
+        configurarSecurityContext();
 
         NotaRequestDTO notaComApenasNota2 = new NotaRequestDTO();
         notaComApenasNota2.setNota1(null);
@@ -351,11 +400,14 @@ class MatriculaServiceImplTest {
         verify(matriculaRepository).findById(1L);
         verify(matriculaRepository).save(matricula);
         verify(matriculaMapper).toDTO(matricula);
+        verify(logService).saveLog(eq("INFO"), contains("Notas atualizadas com sucesso para matrícula"), eq("MatriculaServiceImpl"), eq("atualizarNotas"), eq("admin@email.com"), eq("UPDATE_NOTAS"));
+
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao atualizar notas de matrícula não encontrada")
     void deveLancarExcecaoAoAtualizarNotasDeMatriculaNaoEncontrada() {
+        configurarSecurityContext();
 
         when(matriculaRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -366,5 +418,7 @@ class MatriculaServiceImplTest {
         verify(matriculaRepository).findById(1L);
         verifyNoMoreInteractions(matriculaRepository);
         verifyNoInteractions(matriculaMapper);
+        verify(logService).saveLog(eq("ERROR"), contains("Erro ao atualizar notas da matrícula "), eq("MatriculaServiceImpl"), eq("atualizarNotas"), eq("admin@email.com"), eq("UPDATE_NOTAS_ERROR"));
+
     }
 }
