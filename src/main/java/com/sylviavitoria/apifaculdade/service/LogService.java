@@ -1,6 +1,7 @@
 package com.sylviavitoria.apifaculdade.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -25,5 +26,15 @@ public class LogService {
         log.setOperation(operation);
         
         logRepository.save(log);
+    }
+    
+    public List<ApplicationLog> listarTodosLogs() {
+        return logRepository.findAll();
+    }
+    
+    public List<ApplicationLog> buscarLogsRecentes() {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime umDiaAtras = agora.minusDays(1);
+        return logRepository.findByTimestampBetween(umDiaAtras, agora);
     }
 }

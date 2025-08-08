@@ -1,6 +1,5 @@
 package com.sylviavitoria.apifaculdade.controller;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -10,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sylviavitoria.apifaculdade.model.ApplicationLog;
-import com.sylviavitoria.apifaculdade.repository.ApplicationLogRepository;
+import com.sylviavitoria.apifaculdade.service.LogService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,23 +21,21 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Logs", description = "Endpoints para consulta de logs da aplicação")
 public class LogController {
 
-    private final ApplicationLogRepository logRepository;
+    private final LogService logService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Listar todos os logs", description = "Lista todos os logs da aplicação (Apenas ADMIN)")
     public ResponseEntity<List<ApplicationLog>> listarTodosLogs() {
-        List<ApplicationLog> logs = logRepository.findAll();
+        List<ApplicationLog> logs = logService.listarTodosLogs();
         return ResponseEntity.ok(logs);
     }
 
     @GetMapping("/recentes")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    @Operation(summary = "Buscar logs recentes", description = "Busca logs das últimas 24 horas")
+    @Operation(summary = "Buscar logs recentes", description = "Busca logs das últimas 24 horas (Apenas ADMIN)")
     public ResponseEntity<List<ApplicationLog>> buscarLogsRecentes() {
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime umDiaAtras = agora.minusDays(1);
-        List<ApplicationLog> logs = logRepository.findByTimestampBetween(umDiaAtras, agora);
+        List<ApplicationLog> logs = logService.buscarLogsRecentes();
         return ResponseEntity.ok(logs);
     }
 }
