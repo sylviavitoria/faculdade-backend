@@ -13,6 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -75,6 +78,17 @@ public class ProfessorController {
     public ResponseEntity<ProfessorResponseDTO> buscarProfessor(@Parameter(description = "ID do professor") @PathVariable Long id) {
         ProfessorResponseDTO professor = professorService.buscarProfessorPorId(id);
         return ResponseEntity.ok(professor);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Listar professores", description = "Retorna uma lista paginada de professores (Apenas ADMIN)")
+    public ResponseEntity<Page<ProfessorResponseDTO>> listarProfessores(
+            @Parameter(description = "Número da página") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Parâmetros de ordenação") @RequestParam(required = false) List<String> sort) {
+        Page<ProfessorResponseDTO> professores = professorService.listarProfessores(page, size, sort);
+        return ResponseEntity.ok(professores);
     }
 
     @GetMapping("/me")
