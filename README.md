@@ -434,7 +434,20 @@ GET http://localhost:8080/api/v1/alunos
 Authorization: Bearer Token {seu-token}
 ```
 
+---
 
+## 🔗 Integração com o Frontend
+
+Esta **API REST** foi desenvolvida para ser consumida pelo **frontend em React + TypeScript**, que fornece a interface do usuário para:
+
+- Login seguro 
+- Gerenciamento de Alunos, Professores, Disciplinas e Matrículas
+- Interface para lançamento e consulta de notas
+- Navegação por perfis de usuário (Admin, Professor, Aluno)
+
+- O frontend está disponível em: [faculdade-frontend](https://github.com/sylviavitoria/faculdade-frontend)  
+
+> ⚠️ Para testes completos da aplicação, execute o frontend e o backend em conjunto.
 
 
 
