@@ -89,7 +89,7 @@ public class MatriculaController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_PROFESSOR')")
     @Operation(summary = "Listar matrículas", description = "Lista todas as matrículas com paginação e ordenação.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lista de matrículas retornada com sucesso",
