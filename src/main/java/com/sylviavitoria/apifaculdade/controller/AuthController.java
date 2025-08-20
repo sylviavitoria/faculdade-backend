@@ -1,7 +1,10 @@
 package com.sylviavitoria.apifaculdade.controller;
 
 import com.sylviavitoria.apifaculdade.dto.LoginRequestDTO;
-import com.sylviavitoria.apifaculdade.dto.TokenResponseDTO;
+import com.sylviavitoria.apifaculdade.dto.LoginResponseDTO;
+import com.sylviavitoria.apifaculdade.dto.UsuarioResponseDTO;
+import com.sylviavitoria.apifaculdade.model.Usuario;
+import com.sylviavitoria.apifaculdade.repository.UsuarioRepository;
 import com.sylviavitoria.apifaculdade.security.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,6 +26,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final UsuarioRepository usuarioRepository;
 
     @PostMapping("/login")
     @Operation(summary = "Realizar login", description = "Autentica um usuário e retorna o token JWT")
@@ -37,8 +41,23 @@ public class AuthController {
 
             authenticationManager.authenticate(authToken);
 
+            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
             String token = jwtUtil.generateToken(loginRequest.getEmail());
-            return ResponseEntity.ok(new TokenResponseDTO(token));
+
+            LoginResponseDTO response = LoginResponseDTO.builder()
+                    .accessToken(token)
+                    .tipo("Bearer")
+                    .expiresIn(86400L)
+                    .usuario(UsuarioResponseDTO.builder()
+                            .id(usuario.getId())
+                            .email(usuario.getEmail())
+                            .tipo(usuario.getTipo())
+                            .build())
+                    .build();
+                    
+            return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
             return ResponseEntity.status(401).body("Credenciais inválidas");
         }
