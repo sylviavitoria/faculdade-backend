@@ -2,6 +2,7 @@ package com.sylviavitoria.apifaculdade.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,6 +20,7 @@ public class DisciplinaRequestDTO {
     private String codigo;
 
     @Schema(description = "ID do professor responsável", example = "1")
+    @NotNull(message = "O ID do professor é obrigatório")
     private Long professorId;
 }
 
