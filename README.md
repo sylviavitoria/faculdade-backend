@@ -456,7 +456,7 @@ Esta **API REST** foi desenvolvida para ser consumida pelo **frontend em React +
 Este backend possui **testes automatizados de API desenvolvidos com Rest Assured**, que validam os principais fluxos de autenticação, permissões e operações de CRUD da aplicação.  
 
 Os testes garantem a qualidade e a confiabilidade da API, cobrindo cenários de sucesso e falha.
-- A automação com com Rest Assured está disponível em: [RestAssuredFaculdade](https://github.com/sylviavitoria/RestAssuredFaculdade)  
+- A automação com Rest Assured está disponível em: [RestAssuredFaculdade](https://github.com/sylviavitoria/RestAssuredFaculdade)  
 
 
 
